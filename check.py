@@ -5,6 +5,8 @@ import requests
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.ticker as ticker
+from matplotlib.ticker import FuncFormatter
+
 
 
 
@@ -46,7 +48,11 @@ recent = ontario[-1]
 daysleft = (2*pop- recent[2])/ (recent[1])
 end_date = recent[0] + datetime.timedelta(days=daysleft)
 if recent[0].strftime("%Y-%m-%d") != lasttweet:
-    text = "#Ontario administered %d #COVID19 #Vaccine doses on %s. The total number of administered doses is %d. At this rate, it will take until %s to administer two doses to every person in Ontario. Data from https://opencovid.ca." %(recent[1],recent[0].strftime("%A %-d %B %Y"),recent[2],end_date.strftime("%-d %B %Y"))
+    x = [r[0] for r in ontario[-7:]]
+    y = [r[1] for r in ontario[-7:]]
+    weekavg = sum(y)/7.
+
+    text = "#Ontario administered %d #COVID19 #Vaccine doses on %s. The 7-day average is %d. The total number of administered doses is now %d (%.2f %% of the population). Data from https://opencovid.ca." %(recent[1],recent[0].strftime("%A %-d %B %Y"),weekavg,recent[2],recent[2]/pop*100.)
     print(text)
     with open("lasttweet.txt","w") as f:
         f.write(recent[0].strftime("%Y-%m-%d"))
@@ -54,8 +60,6 @@ if recent[0].strftime("%Y-%m-%d") != lasttweet:
     ax.xaxis.set_major_locator(mdates.DayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%-d/%-m'))
 
-    x = [r[0] for r in ontario[-7:]]
-    y = [r[1] for r in ontario[-7:]]
     ax.set_xlim([x[0]-datetime.timedelta(days=0.6),x[-1]+datetime.timedelta(days=0.6)])
     ax.axhline(sum(y)/7.,color="black",ls="--")
     ax.annotate('7 day average: %.0f doses/day'%(sum(y)/7.), xy=(x[0]-datetime.timedelta(days=0.2), 1.03*sum(y)/7.))
@@ -69,15 +73,62 @@ if recent[0].strftime("%Y-%m-%d") != lasttweet:
                     textcoords="offset points",
                     ha='center', va='bottom', rotation=90)
 
-    rax = ax.twinx()
-    rax.set_yticks([forward(x) for x in ax.get_yticks()])
-    rax.set_ybound([forward(x) for x in ax.get_ybound()])
-    rax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.1f%%'))
-    rax.set_ylabel("Fraction of population")
-
     fig.savefig("7day.png", transparent=False)
-
     api.update_with_media("7day.png", text)
 
-    #api.update_status(text)
-    
+    fig, ax = plt.subplots(1,1,figsize=(6,4),tight_layout=True)
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=4))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%-d/%-m/%Y'))
+    x = [r[0] for r in ontario]
+    y = [r[2] for r in ontario]
+
+    daysleft = (pop-y[-1])/weekavg
+    dateoneshot = x[-1] + datetime.timedelta(days=daysleft)
+
+    daysleft = (pop*0.7*2-y[-1])/weekavg
+    date70 = x[-1] + datetime.timedelta(days=daysleft)
+
+
+
+    rhs = date70 + datetime.timedelta(days=100)
+    ax.set_ylim([0,1.1*pop*2*0.7])
+    ax.plot((x[0],rhs), (pop,pop),color="black",ls="--")
+    ax.annotate("Population of Ontario", xy=(x[3],pop+4e5))
+
+    ax.plot((x[0],rhs), (pop*2*0.7,pop*2*0.7),color="black",ls="--")
+    ax.annotate("70% of the population receives 2 vaccine doses", xy=(x[3],pop*2*0.7+4e5))
+
+
+    ax.plot(x,y,label="Total doses administered",color="red", lw=2)
+    ax.plot((x[-1],date70),(y[-1],pop*2*0.7),color="red",ls=":",label="Projection based on \n7-day average")
+
+
+
+
+    ax.legend(loc="lower right")
+    def millions(x, pos):
+        return '%1.1f million' % (x * 1e-6)
+
+    formatter = FuncFormatter(millions)
+    ax.yaxis.set_major_formatter(formatter)
+
+
+    ax.annotate(date70.strftime("%-d %B %Y"), xy=(date70, pop*2*0.7),  xycoords='data',
+                xytext=(0.78, 0.8), textcoords='axes fraction',
+                arrowprops=dict(facecolor='black', arrowstyle="->"))
+
+    ax.annotate(dateoneshot.strftime("%-d %B %Y"), xy=(dateoneshot, pop),  xycoords='data',
+                xytext=(0.6, 0.5), textcoords='axes fraction',
+                arrowprops=dict(facecolor='black', arrowstyle="->"))
+
+    ax.annotate("today", xy=(x[-1], y[-1]),  xycoords='data',
+                xytext=(0.1, 0.2), textcoords='axes fraction',
+                arrowprops=dict(facecolor='black', arrowstyle="->"))
+
+    text2 = "Based on the 7-day average rate of daily #COVID19 #vaccine doses administered, everyone in #Ontario can receive their first dose by %s. Alternatively, 70%% of the population can receive two doses by %s. Data from https://opencovid.ca."%(dateoneshot.strftime("%-d %B %Y"),date70.strftime("%-d %B %Y"))
+
+    fig.savefig("predict.png", transparent=False)
+    api.update_with_media("predict.png", text2)
+    print(text2)
+
+     
