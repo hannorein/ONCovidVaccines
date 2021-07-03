@@ -52,7 +52,7 @@ if recent[0].strftime("%Y-%m-%d") != lasttweet:
     y = [r[1] for r in ontario[-7:]]
     weekavg = sum(y)/7.
 
-    text = "#Ontario administered %d #COVID19 #Vaccine doses on %s. The 7-day average is %d. The total number of administered doses is now %d (%.2f %% of the population). Data from https://opencovid.ca." %(recent[1],recent[0].strftime("%A %-d %B %Y"),weekavg,recent[2],recent[2]/pop*100.)
+    text = "#Ontario administered %d #COVID19 #Vaccine doses on %s. The 7-day average is %d. The total number of administered doses is now %d (%.2f%% of the population). Data from https://opencovid.ca." %(recent[1],recent[0].strftime("%A %-d %B %Y"),weekavg,recent[2],recent[2]*100./pop)
     print(text)
     with open("lasttweet.txt","w") as f:
         f.write(recent[0].strftime("%Y-%m-%d"))
@@ -60,9 +60,11 @@ if recent[0].strftime("%Y-%m-%d") != lasttweet:
     ax.xaxis.set_major_locator(mdates.DayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%-d/%-m'))
 
+    x = [r[0] for r in ontario[-14:]]
+    y = [r[1] for r in ontario[-14:]]
     ax.set_xlim([x[0]-datetime.timedelta(days=0.6),x[-1]+datetime.timedelta(days=0.6)])
-    ax.axhline(sum(y)/7.,color="black",ls="--")
-    ax.annotate('7 day average: %.0f doses/day'%(sum(y)/7.), xy=(x[0]-datetime.timedelta(days=0.2), 1.03*sum(y)/7.))
+    ax.axhline(weekavg,color="black",ls="--")
+    ax.annotate('7-day average: %.0f doses/day'%(weekavg), xy=(x[0]-datetime.timedelta(days=0.2), 1.03*weekavg))
     ax.set_ylabel("Administered doses")
     rects = ax.bar(x,y,color=(1,0.4,0.4))
     for rect in rects:
@@ -82,7 +84,7 @@ if recent[0].strftime("%Y-%m-%d") != lasttweet:
     x = [r[0] for r in ontario]
     y = [r[2] for r in ontario]
 
-    daysleft = (pop-y[-1])/weekavg
+    daysleft = (2.*pop-y[-1])/weekavg
     dateoneshot = x[-1] + datetime.timedelta(days=daysleft)
 
     daysleft = (pop*0.7*2-y[-1])/weekavg
@@ -91,9 +93,9 @@ if recent[0].strftime("%Y-%m-%d") != lasttweet:
 
 
     rhs = date70 + datetime.timedelta(days=100)
-    ax.set_ylim([0,1.1*pop*2*0.7])
-    ax.plot((x[0],rhs), (pop,pop),color="black",ls="--")
-    ax.annotate("Population of Ontario", xy=(x[3],pop+4e5))
+    ax.set_ylim([0,1.3*pop*2])
+    ax.plot((x[0],rhs), (2.*pop,2.*pop),color="black",ls="--")
+    ax.annotate("2x population of Ontario", xy=(x[3],2.*pop+4e5))
 
     ax.plot((x[0],rhs), (pop*2*0.7,pop*2*0.7),color="black",ls="--")
     ax.annotate("70% of the population receives 2 vaccine doses", xy=(x[3],pop*2*0.7+4e5))
@@ -125,7 +127,7 @@ if recent[0].strftime("%Y-%m-%d") != lasttweet:
                 xytext=(0.1, 0.2), textcoords='axes fraction',
                 arrowprops=dict(facecolor='black', arrowstyle="->"))
 
-    text2 = "Based on the 7-day average rate of daily #COVID19 #vaccine doses administered, everyone in #Ontario can receive their first dose by %s. Alternatively, 70%% of the population can receive two doses by %s. Data from https://opencovid.ca."%(dateoneshot.strftime("%-d %B %Y"),date70.strftime("%-d %B %Y"))
+    text2 = "Based on the 7-day average rate of daily #COVID19 #vaccine doses administered, everyone in #Ontario can receive two doses by %s. 70%% of the population can receive two doses by %s. Data from https://opencovid.ca."%(dateoneshot.strftime("%-d %B %Y"),date70.strftime("%-d %B %Y"))
 
     fig.savefig("predict.png", transparent=False)
     api.update_with_media("predict.png", text2)
